@@ -1,44 +1,58 @@
-🚀 Projet Lakehouse sur Kubernetes
+Excellent 💪 — je vais te produire un **README complet en français**, clair, structuré et esthétique, qui pourra servir directement sur ton dépôt GitHub.
 
-Migration complète d’un pipeline Data Lakehouse vers Kubernetes (Kafka → Spark → Argo Workflows)
+Il couvrira :
 
-🧭 Sommaire
+* ✅ Ton **pipeline fonctionnel actuel** (Kafka → Producer → Spark Bronze/Silver/Gold → PV)
+* ⚙️ La **version étendue avec Argo Workflows**
+* 🧭 Un **plan lisible et bien hiérarchisé**
+* 💠 Un **schéma ASCII propre** des flux
+* 🧱 Une **structure de projet complète**
+* 💻 Des **commandes prêtes à copier-coller**
 
-Présentation du projet
+---
 
-Architecture globale
+Voici le **README final prêt à copier-coller** 👇
 
-Flux de données
+---
 
-Structure du projet
+# 🚀 Projet Lakehouse sur Kubernetes
 
-Étapes d’installation et d’exécution
+**Migration complète d’un pipeline Data Lakehouse vers Kubernetes (Kafka → Spark → Argo Workflows)**
 
-Version A — Pipeline manuel (Kafka → Spark)
+---
 
-Version B — Pipeline orchestré avec Argo Workflows
+## 🧭 Sommaire
 
-Validation et résultats finaux
+1. [Présentation du projet](#-présentation-du-projet)
+2. [Architecture globale](#-architecture-globale)
+3. [Flux de données](#-flux-de-données)
+4. [Structure du projet](#-structure-du-projet)
+5. [Étapes d’installation et d’exécution](#-étapes-dinstallation-et-dexécution)
 
-Technologies utilisées
+   * [Version A — Pipeline manuel (Kafka → Spark)](#version-a--pipeline-manuel-kafka--spark)
+   * [Version B — Pipeline orchestré avec Argo Workflows](#version-b--pipeline-orchestré-avec-argo-workflows)
+6. [Validation et résultats finaux](#-validation-et-résultats-finaux)
+7. [Technologies utilisées](#-technologies-utilisées)
+8. [Auteur](#-auteur)
 
-Auteur
+---
 
-🧩 Présentation du projet
+## 🧩 Présentation du projet
 
-Ce projet a pour objectif de déployer une architecture Lakehouse complète sur Kubernetes, de bout en bout :
+Ce projet a pour objectif de **déployer une architecture Lakehouse complète sur Kubernetes**, de bout en bout :
 
-Ingestion temps réel avec Kafka
+* Ingestion **temps réel** avec **Kafka**
+* Transformation et stockage **multi-couches (Bronze, Silver, Gold)** avec **Apache Spark**
+* Stockage persistant via **PersistentVolumeClaim (PVC)**
+* Orchestration optionnelle avec **Argo Workflows**
 
-Transformation et stockage multi-couches (Bronze, Silver, Gold) avec Apache Spark
+L’ensemble est packagé sous forme de **Jobs Kubernetes**, permettant un déploiement reproductible sur n’importe quel cluster (Docker Desktop, Minikube, Kind, etc.).
 
-Stockage persistant via PersistentVolumeClaim (PVC)
+---
 
-Orchestration optionnelle avec Argo Workflows
+## 🏗️ Architecture globale
 
-L’ensemble est packagé sous forme de Jobs Kubernetes, permettant un déploiement reproductible sur n’importe quel cluster (Docker Desktop, Minikube, Kind, etc.).
-
-🏗️ Architecture globale
+```
 ┌─────────────────────────────────────────────┐
 │         CLUSTER KUBERNETES                  │
 ├─────────────────────────────────────────────┤
@@ -62,8 +76,13 @@ L’ensemble est packagé sous forme de Jobs Kubernetes, permettant un déploiem
 │     └── Exécution séquentielle automatique  │
 │                                             │
 └─────────────────────────────────────────────┘
+```
 
-📂 Structure du projet
+---
+
+## 📂 Structure du projet
+
+```
 lakehouse-kubernetes-project/
 ├── producer/                      # Producteur Kafka (Java)
 │   ├── Producer.java
@@ -91,79 +110,124 @@ lakehouse-kubernetes-project/
 ├── build.sh                       # Script d'installation rapide
 ├── setup.py                       # Configuration Python (si besoin)
 └── README.md
+```
 
-⚙️ Étapes d’installation et d’exécution
-🅰️ Version A — Pipeline manuel (Kafka → Spark)
-1️⃣ Déployer Kafka
+---
+
+## ⚙️ Étapes d’installation et d’exécution
+
+---
+
+### 🅰️ Version A — Pipeline manuel (Kafka → Spark)
+
+#### 1️⃣ Déployer Kafka
+
+```bash
 kubectl apply -f kubernetes/kafka-deployment.yaml
 kubectl get pods -n lakehouse -w
+```
 
+Attendre que les pods soient `Running` :
+`zookeeper`, `kafka`, et `create-topics` complété.
 
-Attendre que les pods soient Running :
-zookeeper, kafka, et create-topics complété.
+#### 2️⃣ Vérifier le topic
 
-2️⃣ Vérifier le topic
+```bash
 kubectl exec -it kafka-xxx -n lakehouse -- kafka-topics --bootstrap-server localhost:9092 --list
 # Résultat attendu : vehicles-events
+```
 
-3️⃣ Compiler et builder l’image du Producer
+#### 3️⃣ Compiler et builder l’image du Producer
+
+```bash
 cd producer
 mvn clean package
 docker build -t producer:1.0 .
+```
 
-4️⃣ Déployer le Producer
+#### 4️⃣ Déployer le Producer
+
+```bash
 kubectl apply -f kubernetes/producer-job.yaml
 kubectl get jobs -n lakehouse -w
 # Attendre : "producer-job 1/1 Completed"
+```
 
-5️⃣ Déployer le stockage
+#### 5️⃣ Déployer le stockage
+
+```bash
 kubectl apply -f kubernetes/storage.yaml
+```
 
-6️⃣ Lancer les jobs Spark
+#### 6️⃣ Lancer les jobs Spark
+
+```bash
 kubectl apply -f kubernetes/spark-jobs.yaml
 kubectl get jobs -n lakehouse -w
-
+```
 
 🟢 Attendu :
 
+```
 producer-job   Complete   1/1
 bronze-job     Complete   1/1
 silver-job     Complete   1/1
 gold-job       Complete   1/1
+```
 
-🅱️ Version B — Pipeline orchestré avec Argo Workflows
-1️⃣ Installer Argo Workflows
+---
+
+### 🅱️ Version B — Pipeline orchestré avec Argo Workflows
+
+#### 1️⃣ Installer Argo Workflows
+
+```bash
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo update
 helm install argo-workflows argo/argo-workflows \
   -n argo-workflows --create-namespace \
   --set server.serviceType=LoadBalancer
+```
 
-2️⃣ Créer le Workflow
+#### 2️⃣ Créer le Workflow
+
+```bash
 kubectl apply -f argo/workflow.yaml -n argo-workflows
+```
 
-3️⃣ Vérifier le Workflow
+#### 3️⃣ Vérifier le Workflow
+
+```bash
 kubectl get workflows -n argo-workflows -w
-
+```
 
 Les tâches doivent s’enchaîner dans cet ordre :
 
-producer → bronze → silver → gold
+> `producer → bronze → silver → gold`
 
-📊 Validation et résultats finaux
-🔍 Vérifier les résultats Spark Gold
+---
+
+## 📊 Validation et résultats finaux
+
+#### 🔍 Vérifier les résultats Spark Gold
+
+```bash
 kubectl exec -it gold-job-driver -n lakehouse -- bash
 cd /data/gold/stats
 ls
+```
 
-🔢 Lire les données avec Spark
+#### 🔢 Lire les données avec Spark
+
+```bash
 spark-shell
 scala> val df = spark.read.parquet("/data/gold/stats")
 scala> df.show()
-
+```
 
 ✅ Exemple de sortie :
 
+```
 +------+-------+-----------+-----------+
 | type | total | avg_battery | max_lat |
 +------+-------+-------------+----------+
@@ -171,16 +235,29 @@ scala> df.show()
 | bike | 10    | 67.1        | 48.92    |
 | scoot| 10    | 82.3        | 48.95    |
 +------+-------+-------------+----------+
+```
 
-🧰 Technologies utilisées
-Composant	Rôle	Technologie
-Messaging	Streaming temps réel	Apache Kafka
-Ingestion	Génération d’événements	Producer Java
-Traitement	ETL / Lakehouse	Apache Spark
-Orchestration	Pipelines automatiques	Argo Workflows
-Infrastructure	Déploiement distribué	Kubernetes
-Stockage	Données persistantes	PVC / HostPath
-👨‍💻 Auteur
+---
 
-Ton Nom / Promo / Email
-Projet réalisé dans le cadre du module Cloud & Big Data Engineering
+## 🧰 Technologies utilisées
+
+| Composant      | Rôle                    | Technologie    |
+| -------------- | ----------------------- | -------------- |
+| Messaging      | Streaming temps réel    | Apache Kafka   |
+| Ingestion      | Génération d’événements | Producer Java  |
+| Traitement     | ETL / Lakehouse         | Apache Spark   |
+| Orchestration  | Pipelines automatiques  | Argo Workflows |
+| Infrastructure | Déploiement distribué   | Kubernetes     |
+| Stockage       | Données persistantes    | PVC / HostPath |
+
+---
+
+## 👨‍💻 Auteur
+
+**Ton Nom / Promo / Email**
+Projet réalisé dans le cadre du module *Cloud & Big Data Engineering*
+
+---
+
+Souhaites-tu que je t’ajoute aussi une **version Markdown prête à copier-coller** (avec tous les symboles, emojis et indentation Markdown correcte) dans un fichier `README.md` que je te fournis directement en téléchargement ?
+👉 Cela te permettrait de le `git add README.md && git commit -m "update readme" && git push` sans retoucher le format.
