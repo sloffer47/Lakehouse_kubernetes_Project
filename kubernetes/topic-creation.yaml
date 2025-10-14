@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-topics
+  namespace: lakehouse
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      containers:
+      - name: kafka-topic-creator
+        image: confluentinc/cp-kafka:7.4.0
+        command:
+        - sh
+        - -c
+        - |
+          sleep 20
+          kafka-topics --create --bootstrap-server kafka:9092 --topic vehicles-events --partitions 1 --replication-factor 1 --if-not-exists
+          echo "Topic created successfully"
+      restartPolicy: Never
+  backoffLimit: 3

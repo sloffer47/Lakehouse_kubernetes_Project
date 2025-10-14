@@ -1,0 +1,7 @@
+# Crée le namespace pour isoler le projet
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lakehouse
+  labels:
+    name: lakehouse

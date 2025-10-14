@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bronze-job
+  namespace: lakehouse
+spec:
+  template:
+    spec:
+      containers:
+      - name: python
+        image: python:3.9-slim
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            pip install kafka-python --quiet
+            python /scripts/bronze.py
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: scripts
+        configMap:
+          name: spark-scripts
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-pvc
+      restartPolicy: Never
+  backoffLimit: 1
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: silver-job
+  namespace: lakehouse
+spec:
+  template:
+    spec:
+      containers:
+      - name: python
+        image: python:3.9-slim
+        command: ["python", "/scripts/silver.py"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: scripts
+        configMap:
+          name: spark-scripts
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-pvc
+      restartPolicy: Never
+  backoffLimit: 1
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gold-job
+  namespace: lakehouse
+spec:
+  template:
+    spec:
+      containers:
+      - name: python
+        image: python:3.9-slim
+        command: ["python", "/scripts/gold.py"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: scripts
+        configMap:
+          name: spark-scripts
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-pvc
+      restartPolicy: Never
+  backoffLimit: 1

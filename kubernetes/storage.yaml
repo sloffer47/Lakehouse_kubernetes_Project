@@ -1,0 +1,26 @@
+# PersistentVolume et PersistentVolumeClaim pour Spark
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data-pv
+  namespace: lakehouse
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data/lakehouse"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+  namespace: lakehouse
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
