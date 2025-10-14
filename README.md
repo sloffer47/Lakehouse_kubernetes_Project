@@ -239,6 +239,6 @@ scala> df.show()
 
 ## 👨‍💻 Auteur
 
-**Ton MBANDOU Yorick**
+**MBANDOU Yorick** 
 Projet réalisé dans le cadre du module *Cloud & Big Data Engineering*
 
