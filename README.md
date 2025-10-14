@@ -1,12 +1,46 @@
-# Data Lakehouse Migration vers Kubernetes
+🚀 Projet Lakehouse sur Kubernetes
 
-Architecture complète pour migrer un pipeline data de Docker Compose vers Kubernetes.
+Migration complète d’un pipeline Data Lakehouse vers Kubernetes (Kafka → Spark → Argo Workflows)
 
-## 📊 Architecture
+🧭 Sommaire
 
-```
+Présentation du projet
+
+Architecture globale
+
+Flux de données
+
+Structure du projet
+
+Étapes d’installation et d’exécution
+
+Version A — Pipeline manuel (Kafka → Spark)
+
+Version B — Pipeline orchestré avec Argo Workflows
+
+Validation et résultats finaux
+
+Technologies utilisées
+
+Auteur
+
+🧩 Présentation du projet
+
+Ce projet a pour objectif de déployer une architecture Lakehouse complète sur Kubernetes, de bout en bout :
+
+Ingestion temps réel avec Kafka
+
+Transformation et stockage multi-couches (Bronze, Silver, Gold) avec Apache Spark
+
+Stockage persistant via PersistentVolumeClaim (PVC)
+
+Orchestration optionnelle avec Argo Workflows
+
+L’ensemble est packagé sous forme de Jobs Kubernetes, permettant un déploiement reproductible sur n’importe quel cluster (Docker Desktop, Minikube, Kind, etc.).
+
+🏗️ Architecture globale
 ┌─────────────────────────────────────────────┐
-│       KUBERNETES CLUSTER                    │
+│         CLUSTER KUBERNETES                  │
 ├─────────────────────────────────────────────┤
 │                                             │
 │  1. KAFKA (Message Broker)                  │
@@ -14,214 +48,139 @@ Architecture complète pour migrer un pipeline data de Docker Compose vers Kuber
 │     └── Zookeeper (Port 2181)               │
 │                                             │
 │  2. PRODUCER (Générateur de données)        │
-│     └── Job Kubernetes                      │
+│     └── Job Kubernetes (Producer Java)      │
 │                                             │
-│  3. SPARK JOBS (Traitement)                 │
-│     ├── Bronze (Données brutes)             │
-│     ├── Silver (Données nettoyées)          │
-│     └── Gold (Statistiques)                 │
+│  3. SPARK JOBS (Traitements ETL)            │
+│     ├── Bronze : données brutes depuis Kafka│
+│     ├── Silver : nettoyage et validation    │
+│     └── Gold : agrégations statistiques     │
 │                                             │
-│  4. STORAGE (Données persistantes)          │
-│     └── PersistentVolume                    │
+│  4. STORAGE (Lakehouse)                     │
+│     └── PersistentVolume (10Gi)             │
+│                                             │
+│  5. ARGO WORKFLOWS (Orchestration) ⚙️       │
+│     └── Exécution séquentielle automatique  │
 │                                             │
 └─────────────────────────────────────────────┘
-```
 
-## 🚀 Quick Start
-
-### 1. Prérequis
-- Kubernetes (Docker Desktop, Minikube, Kind)
-- kubectl configuré
-- Maven (pour compiler le Producer)
-- Docker Desktop / Docker CLI
-
-### 2. Structure du Projet
-
-```
+📂 Structure du projet
 lakehouse-kubernetes-project/
-├── producer/              # Code Java du Producer
-│   ├── Producer.java      # Source
-│   ├── pom.xml           # Dépendances Maven
-│   └── Dockerfile        # Build Docker
-├── spark-jobs/            # Jobs Spark (Python)
-│   ├── bronze.py         # Lecture Kafka
-│   ├── silver.py         # Nettoyage
-│   └── gold.py           # Agrégations
-├── kubernetes/            # Configuration K8s
-│   ├── namespace.yaml     # Namespace
+├── producer/                      # Producteur Kafka (Java)
+│   ├── Producer.java
+│   ├── Dockerfile
+│   └── pom.xml
+│
+├── spark-jobs/                    # Jobs Spark (Scala)
+│   ├── Bronze.scala
+│   ├── Silver.scala
+│   ├── Gold.scala
+│   └── pom.xml
+│
+├── kubernetes/                    # Manifests Kubernetes
+│   ├── namespace.yaml
 │   ├── kafka-deployment.yaml
 │   ├── topic-creation.yaml
 │   ├── producer-job.yaml
 │   ├── storage.yaml
-│   └── spark-jobs.yaml
-└── README.md             # Ce fichier
-```
+│   ├── spark-jobs.yaml
+│   └── spark-applications.yaml
+│
+├── argo/                          # (Optionnel) Orchestration
+│   └── workflow.yaml
+│
+├── build.sh                       # Script d'installation rapide
+├── setup.py                       # Configuration Python (si besoin)
+└── README.md
 
-### 3. Étapes de Déploiement
-
-#### Étape 1 : Créer le namespace
-```bash
-kubectl apply -f kubernetes/namespace.yaml
-```
-
-#### Étape 2 : Déployer Kafka
-```bash
+⚙️ Étapes d’installation et d’exécution
+🅰️ Version A — Pipeline manuel (Kafka → Spark)
+1️⃣ Déployer Kafka
 kubectl apply -f kubernetes/kafka-deployment.yaml
-kubectl apply -f kubernetes/topic-creation.yaml
-
-# Attends que les pods soient Running
 kubectl get pods -n lakehouse -w
-```
 
-#### Étape 3 : Builder l'image Docker du Producer
-```bash
+
+Attendre que les pods soient Running :
+zookeeper, kafka, et create-topics complété.
+
+2️⃣ Vérifier le topic
+kubectl exec -it kafka-xxx -n lakehouse -- kafka-topics --bootstrap-server localhost:9092 --list
+# Résultat attendu : vehicles-events
+
+3️⃣ Compiler et builder l’image du Producer
 cd producer
+mvn clean package
 docker build -t producer:1.0 .
-cd ..
-```
 
-#### Étape 4 : Déployer le Producer
-```bash
+4️⃣ Déployer le Producer
 kubectl apply -f kubernetes/producer-job.yaml
-
-# Vérifie que le job s'exécute
 kubectl get jobs -n lakehouse -w
-```
+# Attendre : "producer-job 1/1 Completed"
 
-#### Étape 5 : Vérifier les données dans Kafka
-```bash
-kubectl run -it --rm --restart=Never \
-  --image=confluentinc/cp-kafka:7.4.0 \
-  -n lakehouse test \
-  -- kafka-console-consumer \
-  --bootstrap-server kafka:9092 \
-  --topic vehicles-events \
-  --max-messages 5
-```
+5️⃣ Déployer le stockage
+kubectl apply -f kubernetes/storage.yaml
 
-#### Étape 6 : Déployer les jobs Spark
-```bash
-# D'abord, créer une ConfigMap avec les scripts Spark
-kubectl create configmap spark-scripts \
-  --from-file=spark-jobs/ \
-  -n lakehouse
-
-# Puis déployer les jobs
+6️⃣ Lancer les jobs Spark
 kubectl apply -f kubernetes/spark-jobs.yaml
-```
+kubectl get jobs -n lakehouse -w
 
-### 4. Monitoring
 
-```bash
-# Voir tous les pods
-kubectl get pods -n lakehouse
+🟢 Attendu :
 
-# Voir les logs d'un pod
-kubectl logs -n lakehouse <pod-name>
+producer-job   Complete   1/1
+bronze-job     Complete   1/1
+silver-job     Complete   1/1
+gold-job       Complete   1/1
 
-# Voir les jobs
-kubectl get jobs -n lakehouse
+🅱️ Version B — Pipeline orchestré avec Argo Workflows
+1️⃣ Installer Argo Workflows
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+helm install argo-workflows argo/argo-workflows \
+  -n argo-workflows --create-namespace \
+  --set server.serviceType=LoadBalancer
 
-# Décrire une ressource
-kubectl describe pod -n lakehouse <pod-name>
-```
+2️⃣ Créer le Workflow
+kubectl apply -f argo/workflow.yaml -n argo-workflows
 
-### 5. Nettoyage
+3️⃣ Vérifier le Workflow
+kubectl get workflows -n argo-workflows -w
 
-```bash
-# Supprimer tout
-kubectl delete namespace lakehouse
-```
 
-## 📈 Flux de Données
+Les tâches doivent s’enchaîner dans cet ordre :
 
-1. **Producer** → Génère 30 événements GPS
-2. **Kafka** → Stocke les événements
-3. **Bronze** → Lit Kafka, écrit Parquet brut
-4. **Silver** → Valide les données, filtre
-5. **Gold** → Agrège par type de véhicule
+producer → bronze → silver → gold
 
-## 🔧 Configuration
+📊 Validation et résultats finaux
+🔍 Vérifier les résultats Spark Gold
+kubectl exec -it gold-job-driver -n lakehouse -- bash
+cd /data/gold/stats
+ls
 
-### Variables d'environnement
+🔢 Lire les données avec Spark
+spark-shell
+scala> val df = spark.read.parquet("/data/gold/stats")
+scala> df.show()
 
-#### Producer
-```
-KAFKA_BOOTSTRAP_SERVER=kafka:9092  # URL Kafka
-```
 
-### Ressources Kubernetes
+✅ Exemple de sortie :
 
-- **CPU Request**: 100m - 500m
-- **Memory Request**: 256Mi - 1Gi
-- **Storage**: 10Gi
++------+-------+-----------+-----------+
+| type | total | avg_battery | max_lat |
++------+-------+-------------+----------+
+| car  | 10    | 75.4        | 48.90    |
+| bike | 10    | 67.1        | 48.92    |
+| scoot| 10    | 82.3        | 48.95    |
++------+-------+-------------+----------+
 
-## 📝 Exemple de Message Kafka
+🧰 Technologies utilisées
+Composant	Rôle	Technologie
+Messaging	Streaming temps réel	Apache Kafka
+Ingestion	Génération d’événements	Producer Java
+Traitement	ETL / Lakehouse	Apache Spark
+Orchestration	Pipelines automatiques	Argo Workflows
+Infrastructure	Déploiement distribué	Kubernetes
+Stockage	Données persistantes	PVC / HostPath
+👨‍💻 Auteur
 
-```json
-{
-  "vehicleId": "CAR_000",
-  "type": "car",
-  "latitude": 48.8566,
-  "longitude": 2.3522,
-  "battery": 75,
-  "timestamp": 1697203200000
-}
-```
-
-## 🎯 Résultats Attendus
-
-### Bronze
-- Lit les événements Kafka
-- Écrit `/data/bronze/vehicles/part-*.parquet`
-- 30 lignes minimum
-
-### Silver
-- Valide batterie (0-100)
-- Valide coordonnées (lat: -90 à 90, lon: -180 à 180)
-- Écrit `/data/silver/vehicles/part-*.parquet`
-- ~28-30 lignes (après filtrage)
-
-### Gold
-- Agrège par type (car, bike, scooter)
-- Calcule moyennes et min/max
-- Écrit `/data/gold/stats/part-*.parquet`
-- 3 lignes (une par type)
-
-## 🐛 Troubleshooting
-
-### Le Producer n'envoie pas de messages
-```bash
-# Vérifier que Kafka est accessible
-kubectl exec -it kafka-xxx -n lakehouse -- \
-  kafka-broker-api-versions --bootstrap-server localhost:9092
-```
-
-### Les Spark jobs ne trouvent pas les données
-```bash
-# Vérifier le PersistentVolume
-kubectl get pv
-kubectl describe pv data-pv
-
-# Vérifier le PersistentVolumeClaim
-kubectl get pvc -n lakehouse
-```
-
-### Pas de messages dans Kafka
-```bash
-# Regarde les logs du Producer
-kubectl logs -n lakehouse job/producer-job
-
-# Regarde les logs de Kafka
-kubectl logs -n lakehouse kafka-xxx
-```
-
-## 📚 Ressources
-
-- [Kafka Documentation](https://kafka.apache.org/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Spark Documentation](https://spark.apache.org/)
-
----
-
-**Créé avec ❤️ pour la migration Kubernetes**
+Ton Nom / Promo / Email
+Projet réalisé dans le cadre du module Cloud & Big Data Engineering
