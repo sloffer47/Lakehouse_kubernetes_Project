@@ -1,19 +1,4 @@
-Excellent 💪 — je vais te produire un **README complet en français**, clair, structuré et esthétique, qui pourra servir directement sur ton dépôt GitHub.
 
-Il couvrira :
-
-* ✅ Ton **pipeline fonctionnel actuel** (Kafka → Producer → Spark Bronze/Silver/Gold → PV)
-* ⚙️ La **version étendue avec Argo Workflows**
-* 🧭 Un **plan lisible et bien hiérarchisé**
-* 💠 Un **schéma ASCII propre** des flux
-* 🧱 Une **structure de projet complète**
-* 💻 Des **commandes prêtes à copier-coller**
-
----
-
-Voici le **README final prêt à copier-coller** 👇
-
----
 
 # 🚀 Projet Lakehouse sur Kubernetes
 
@@ -254,10 +239,6 @@ scala> df.show()
 
 ## 👨‍💻 Auteur
 
-**Ton Nom / Promo / Email**
+**Ton MBANDOU Yorick**
 Projet réalisé dans le cadre du module *Cloud & Big Data Engineering*
 
----
-
-Souhaites-tu que je t’ajoute aussi une **version Markdown prête à copier-coller** (avec tous les symboles, emojis et indentation Markdown correcte) dans un fichier `README.md` que je te fournis directement en téléchargement ?
-👉 Cela te permettrait de le `git add README.md && git commit -m "update readme" && git push` sans retoucher le format.
