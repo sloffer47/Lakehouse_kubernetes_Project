@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: lakehouse
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: data-pvc
+  containers:
+    - name: debug-container
+      image: ubuntu
+      command: ["bash"]
+      stdin: true
+      tty: true
+      volumeMounts:
+        - name: data-volume
+          mountPath: /data
